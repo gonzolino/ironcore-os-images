@@ -37,8 +37,12 @@ jobs:
             exit 0
           fi
 
-          VERSION=$(curl -s "https://api.github.com/repos/${GARDENLINUX_REPO}/releases/latest" | jq -r '.tag_name')
-          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+          # The releases/latest API endpoint excludes prereleases, but the
+          # fork publishes rolling dev builds (tag dev-latest) marked as
+          # prerelease. Resolve the newest non-draft release instead.
+          VERSION=$(curl -s "https://api.github.com/repos/${GARDENLINUX_REPO}/releases" \
+            | jq -r '[.[] | select(.draft == false)][0].tag_name // empty')
+          if [ -z "$VERSION" ]; then
             echo "::error::Failed to resolve latest GardenLinux release of ${GARDENLINUX_REPO}"
             exit 1
           fi
@@ -91,15 +95,19 @@ jobs:
             | jq -r '.assets[].name')
 
           for ARCH in $ARCHES; do
-            ASSET=$(echo "$ASSETS" | grep -E "^${{ matrix.asset_pattern }}-${ARCH}-[0-9]+\.[0-9]+\.[0-9]+-[0-9a-f]+\.tar\.xz$" | head -1)
+            # Upstream releases use a numeric version (<flavor>-<arch>-<x.y.z>-<sha>),
+            # the fork's dev builds use "today" (<flavor>-<arch>-today-<sha>), and
+            # both .tar.xz (upstream) and .tar.gz (fork) archives exist.
+            ASSET=$(echo "$ASSETS" | grep -E "^${{ matrix.asset_pattern }}-${ARCH}-.+-[0-9a-f]+\.tar\.(xz|gz)$" | head -1)
             if [ -z "$ASSET" ]; then
-              echo "::error::Could not find asset matching ${{ matrix.asset_pattern }}-${ARCH}-*.tar.xz"
+              echo "::error::Could not find asset matching ${{ matrix.asset_pattern }}-${ARCH}-*.tar.(xz|gz)"
               exit 1
             fi
 
-            # The asset base name (without .tar.xz) is the prefix for all
-            # files inside the archive.
+            # The asset base name (without the archive extension) is the
+            # prefix for all files inside the archive.
             ASSET_BASE="${ASSET%.tar.xz}"
+            ASSET_BASE="${ASSET_BASE%.tar.gz}"
 
             echo "Downloading $ASSET"
             mkdir -p "artifacts/${ARCH}"

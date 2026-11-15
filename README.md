@@ -40,9 +40,10 @@ The main publishing workflow (`publish-gardenlinux.yml`) runs weekly on Sundays
 and can also be triggered manually via `workflow_dispatch`. It:
 
 1. **Resolves the version** to publish: uses the manually provided version or
-   discovers the latest release of
+   discovers the newest release of
    [gonzolino/gardenlinux](https://github.com/gonzolino/gardenlinux) from the
-   GitHub API. Scheduled runs skip publishing if the version has already been
+   GitHub API (including the rolling `dev-latest` prerelease dev builds).
+   Scheduled runs skip publishing if the version has already been
    published.
 2. **Downloads the `kvm-capi` artifact** from the Garden Linux GitHub release
    for all configured architectures (currently `amd64` only).
