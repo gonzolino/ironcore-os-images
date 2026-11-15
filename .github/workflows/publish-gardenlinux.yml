@@ -1,8 +1,9 @@
 name: Publish GardenLinux Images
 
 on:
-  schedule:
-    - cron: '0 0 * * 0'
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       version:
@@ -49,8 +50,8 @@ jobs:
           echo "Resolved latest GardenLinux release: $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-          # Only check for duplicates on scheduled runs, manual dispatch always publishes.
-          if [ "${{ github.event_name }}" = "schedule" ]; then
+          # Only check for duplicates on push runs, manual dispatch always publishes.
+          if [ "${{ github.event_name }}" = "push" ]; then
             if docker manifest inspect "ghcr.io/${{ github.repository_owner }}/gardenlinux/capi:${VERSION}-kvm-amd64" > /dev/null 2>&1; then
               echo "Version $VERSION already published, skipping"
               echo "should_publish=false" >> "$GITHUB_OUTPUT"
